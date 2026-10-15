@@ -9,6 +9,8 @@ const JargonautContent = (() => {
   const M = JargonautMatcher;
   const S = JargonautStore;
   const A = JargonautAbbr;
+  // Firefox's promise-based `browser` API, or Chrome's `chrome`.
+  const ext = globalThis.browser || globalThis.chrome;
 
   // Text gathered on each side of the click: plenty for ~8 words each way
   // and for the sentence that is saved as context.
@@ -32,7 +34,7 @@ const JargonautContent = (() => {
 
   const alive = () => {
     try {
-      return Boolean(chrome.runtime && chrome.runtime.id);
+      return Boolean(ext.runtime && ext.runtime.id);
     } catch {
       return false; // the extension was reloaded; this page needs a refresh
     }
@@ -213,13 +215,24 @@ const JargonautContent = (() => {
     return range;
   }
 
-  // The exact spot under the mouse (document.caretRangeFromPoint), falling
-  // back to the word the browser just selected.
-  function hitTest(e) {
-    const caret = document.caretRangeFromPoint && document.caretRangeFromPoint(e.clientX, e.clientY);
-    if (caret && caret.startContainer.nodeType === Node.TEXT_NODE) {
-      return { node: caret.startContainer, offset: caret.startOffset };
+  // The exact spot under the mouse: the standard caretPositionFromPoint
+  // (Firefox, Chrome 128+), else Chrome's older caretRangeFromPoint, else
+  // the word the browser just selected.
+  function caretAt(x, y) {
+    if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(x, y);
+      if (pos) return { node: pos.offsetNode, offset: pos.offset };
     }
+    if (document.caretRangeFromPoint) {
+      const range = document.caretRangeFromPoint(x, y);
+      if (range) return { node: range.startContainer, offset: range.startOffset };
+    }
+    return null;
+  }
+
+  function hitTest(e) {
+    const caret = caretAt(e.clientX, e.clientY);
+    if (caret && caret.node.nodeType === Node.TEXT_NODE) return caret;
     const sel = getSelection();
     if (sel && sel.anchorNode && sel.anchorNode.nodeType === Node.TEXT_NODE) {
       return { node: sel.anchorNode, offset: sel.anchorOffset };
@@ -368,7 +381,7 @@ const JargonautContent = (() => {
 
   window.addEventListener("dblclick", onDoubleClick, true);
 
-  chrome.runtime.onMessage.addListener((msg) => {
+  ext.runtime.onMessage.addListener((msg) => {
     if (!msg || msg.type !== "jargonaut:lookup-selection") return;
     // Messages for the PDF viewer carry the tab they're meant for.
     if (msg.tabId !== undefined && msg.tabId !== state.tabId) return;

@@ -3,12 +3,15 @@
 //
 //   viewer.html?src=<PDF address>
 //
-// Chrome's own PDF viewer doesn't let extensions in, so PDFs open here
+// The browser's own PDF viewer doesn't let extensions in, so PDFs open here
 // instead, and the same content script as on web pages handles lookups on
 // PDF.js's text layer.
 "use strict";
 
 (() => {
+  // Firefox's promise-based `browser` API, or Chrome's `chrome`.
+  const ext = globalThis.browser || globalThis.chrome;
+
   // The PDF's address. The redirect rule appends it raw ("?src=https://…"),
   // our own links encode it; both are accepted.
   function readSource() {
@@ -36,9 +39,7 @@
     JargonautContent.setSourceUrl(src);
   }
 
-  if (chrome.tabs && chrome.tabs.getCurrent) {
-    chrome.tabs.getCurrent((tab) => tab && JargonautContent.setTabId(tab.id));
-  }
+  ext.tabs.getCurrent().then((tab) => tab && JargonautContent.setTabId(tab.id), () => {});
 
   // PDF.js fires this once its files are loaded, before it initializes:
   // the documented moment to change its options.
@@ -54,17 +55,30 @@
   async function start(app) {
     await app.initializedPromise;
     app.eventBus.on("documentloaded", () => {
-      // A file opened with PDF.js's own Open button has no address to save.
+      // For a PDF chosen from your computer this is just its file name.
       const url = app.url && !app.url.startsWith("blob:") ? app.url : "";
       JargonautContent.setSourceUrl(url);
       readAllText(app.pdfDocument);
     });
-    if (!src) return;
+    if (!src) return showOpenHint(app);
     try {
       await app.open({ url: src });
     } catch {
       offerOriginal(src);
     }
+  }
+
+  // Opened without a PDF (toolbar icon → "Open a PDF from your computer").
+  function showOpenHint(app) {
+    const bar = document.createElement("div");
+    bar.className = "jargonaut-fallback";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Choose a PDF";
+    button.addEventListener("click", () => app.eventBus.dispatch("openfile", { source: window }));
+    bar.append("Drag a PDF from your computer onto this page, or ", button);
+    document.body.append(bar);
+    app.eventBus.on("documentloaded", () => bar.remove(), { once: true });
   }
 
   // The abbreviation scan needs every page's text, not just the pages
@@ -98,7 +112,7 @@
     button.type = "button";
     button.textContent = "Open the original page";
     button.addEventListener("click", async () => {
-      await chrome.runtime.sendMessage({ type: "jargonaut:bypass", url }).catch(() => {});
+      await ext.runtime.sendMessage({ type: "jargonaut:bypass", url }).catch(() => {});
       location.href = url.startsWith("file:") ? `${url}#jargonaut-original` : url;
     });
     bar.append("Jargonaut couldn't open this as a PDF. ", button);

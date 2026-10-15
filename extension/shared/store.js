@@ -1,4 +1,4 @@
-// The glossary in chrome.storage.local. Each entry is stored under its own
+// The glossary in the extension's local storage. Each entry is stored under its own
 // key ("entry:<id>") so saving one term never rewrites the whole glossary.
 //
 // Entry shape (see the PRD's data model):
@@ -17,7 +17,7 @@ const JargonautStore = ((T) => {
   const normText = (s) => T.cleanSpace(s).toLowerCase();
 
   // ---------------------------------------------------------------------
-  // Pure helpers (no chrome.* calls; covered by the Node tests)
+  // Pure helpers (no browser APIs; covered by the Node tests)
   // ---------------------------------------------------------------------
 
   function cleanTag(tag) {
@@ -179,10 +179,12 @@ const JargonautStore = ((T) => {
   }
 
   // ---------------------------------------------------------------------
-  // chrome.storage.local
+  // storage.local
   // ---------------------------------------------------------------------
 
-  const area = () => chrome.storage.local;
+  // Firefox's promise-based `browser` API, or Chrome's `chrome`.
+  const ext = () => globalThis.browser || globalThis.chrome;
+  const area = () => ext().storage.local;
 
   async function getAll() {
     const all = await area().get(null);
@@ -316,7 +318,7 @@ const JargonautStore = ((T) => {
   // Calls back with [{ id, entry }] (entry is null when deleted) whenever
   // any page or tab changes the glossary.
   function onChanged(callback) {
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    ext().storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== "local") return;
       const updates = [];
       for (const [k, change] of Object.entries(changes)) {

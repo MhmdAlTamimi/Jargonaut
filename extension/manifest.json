@@ -16,9 +16,15 @@
       "32": "icons/icon32.png"
     }
   },
-  "options_page": "glossary/glossary.html",
+  "options_ui": {
+    "page": "glossary/glossary.html",
+    "open_in_tab": true
+  },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": [
+      "background.js"
+    ]
   },
   "permissions": [
     "storage",
@@ -75,5 +81,16 @@
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "jargonaut@mhmdaltamimi",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
   }
 }

@@ -1,5 +1,5 @@
 // Text helpers shared by the content script, the PDF viewer, the glossary
-// page and the Node tests. Plain script (no modules) so Chrome can load it as
+// page and the Node tests. Plain script (no modules) so the browser can load it as
 // a content script; the last line exports it for Node.
 "use strict";
 

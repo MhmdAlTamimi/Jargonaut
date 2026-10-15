@@ -215,6 +215,8 @@
         label = u.protocol === "file:" ? decodeURIComponent(u.pathname.split("/").pop()) : u.hostname;
       } catch {}
       link = h("a", { href: m.sourceUrl, target: "_blank", rel: "noopener", text: label });
+    } else if (m.sourceUrl) {
+      link = h("span", { text: m.sourceUrl }); // a PDF opened from your computer
     }
     return h("p", { class: "meta" },
       m.context ? `“${m.context}”` : "",
