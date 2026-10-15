@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jargonaut glossary</title>
+    <link rel="icon" href="../icons/icon32.png" />
+    <link rel="stylesheet" href="glossary.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <img src="../icons/icon48.png" alt="" width="32" height="32" />
+        <div>
+          <h1>Your glossary</h1>
+          <p id="count" class="muted"></p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="export" class="btn" type="button" title="Download every term as a JSON file">Export</button>
+        <button id="import" class="btn" type="button" title="Add terms from an exported JSON file">Import</button>
+        <input id="file" type="file" accept="application/json,.json" hidden />
+      </div>
+    </header>
+
+    <main>
+      <input
+        id="search"
+        class="search"
+        type="search"
+        placeholder="Search terms, meanings and tags   ( / )"
+        autocomplete="off"
+        aria-label="Search the glossary"
+      />
+      <div id="tags" class="chips" role="group" aria-label="Filter by tag"></div>
+      <ul id="list" class="list"></ul>
+      <div id="empty" class="empty" hidden></div>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <script src="../shared/text.js"></script>
+    <script src="../shared/store.js"></script>
+    <script src="glossary.js"></script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "jargonaut",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser extension (Chrome and Firefox): your own glossary of paper terms and abbreviations, shown where you read.",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  }
+}
