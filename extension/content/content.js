@@ -1,12 +1,14 @@
 // Runs on every page and inside the bundled PDF viewer. Listens for a
 // double-click or the Alt+Shift+G shortcut, finds the saved term at that
-// spot, and opens the card (F1, F2).
+// spot, and opens the card (F1, F2). Also scans the page for abbreviations
+// the paper defines (F6).
 "use strict";
 
 const JargonautContent = (() => {
   const T = JargonautText;
   const M = JargonautMatcher;
   const S = JargonautStore;
+  const A = JargonautAbbr;
 
   // Text gathered on each side of the click: plenty for ~8 words each way
   // and for the sentence that is saved as context.
@@ -22,7 +24,10 @@ const JargonautContent = (() => {
     index: null, // matcher index, rebuilt lazily after changes
     sourceUrl: location.href, // saved with each meaning
     tabId: undefined, // set by the PDF viewer (an extension page)
+    paper: new Map(), // abbreviations this page defines: ABBR -> definition
   };
+  // Inside the PDF viewer the text comes from PDF.js, not the DOM.
+  const inViewer = location.protocol === "chrome-extension:";
   let ui = null;
 
   const alive = () => {
@@ -228,6 +233,67 @@ const JargonautContent = (() => {
     return Boolean(el.isContentEditable || el.closest("input, textarea, select, button, jargonaut-ui"));
   }
 
+  // ---- abbreviations the paper defines (F6) ----
+
+  // Block-level tags: their text starts on a new line, so a heading doesn't
+  // glue onto the next paragraph's first word.
+  const BLOCK_TAGS = new Set([
+    "p", "div", "li", "dd", "dt", "td", "th", "tr", "h1", "h2", "h3", "h4", "h5", "h6",
+    "section", "article", "blockquote", "figcaption", "caption", "pre", "header", "footer",
+    "table", "br", "main", "aside", "nav",
+  ]);
+
+  function pageText() {
+    const root = document.body;
+    if (!root) return "";
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+      acceptNode(n) {
+        if (n.nodeType === Node.TEXT_NODE) return NodeFilter.FILTER_ACCEPT;
+        if (SKIP.has(n.localName)) return NodeFilter.FILTER_REJECT;
+        return BLOCK_TAGS.has(n.localName) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+      },
+    });
+    const parts = [];
+    let n;
+    while ((n = walker.nextNode())) parts.push(n.nodeType === Node.TEXT_NODE ? n.data : "\n");
+    return parts.join("");
+  }
+
+  let lastScanLength = -1;
+  function scanPage() {
+    if (inViewer) return;
+    const text = pageText();
+    if (text.length === lastScanLength) return;
+    lastScanLength = text.length;
+    A.scan(text, state.paper);
+  }
+
+  // Pages that load content later (or expand sections) get re-scanned, at
+  // most every few seconds, while the browser is idle.
+  const idle = (fn) =>
+    "requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 3000 }) : setTimeout(fn, 200);
+  let rescanTimer = 0;
+  function scheduleRescan() {
+    if (rescanTimer) return;
+    rescanTimer = setTimeout(() => {
+      rescanTimer = 0;
+      idle(scanPage);
+    }, 3000);
+  }
+
+  if (!inViewer) {
+    idle(scanPage);
+    const ours = (node) => node.localName === "jargonaut-ui";
+    new MutationObserver((records) => {
+      if (records.some((r) => [...r.addedNodes].some((n) => !ours(n)))) scheduleRescan();
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  function paperDefinition(word) {
+    if (lastScanLength < 0 && !inViewer) scanPage();
+    return A.lookup(state.paper, word);
+  }
+
   // ---- what to show ----
 
   function showEntry(entryId, anchor, context) {
@@ -254,6 +320,9 @@ const JargonautContent = (() => {
 
     const match = M.matchAt(index(), tokens, i);
     if (match) return showEntry(match.entryId, anchor, context);
+
+    const paper = paperDefinition(word.exact);
+    if (paper) return getUi().showPaper(paper, anchor, { triggerText: word.exact, context });
 
     getUi().showPill(anchor, () => getUi().showAdd({ term: word.exact, context }, anchor));
   }
@@ -286,8 +355,13 @@ const JargonautContent = (() => {
       const ctx = collectAround(first.node, first.offset);
       context = T.sentenceAround(ctx.text, ctx.offset, ctx.offset + raw.length);
     }
-    const match = M.matchExact(index(), T.tokenize(term));
+    const tokens = T.tokenize(term);
+    const match = M.matchExact(index(), tokens);
     if (match) return showEntry(match.entryId, range, context);
+
+    // A single abbreviation like "RAG" or "(RAG)" that this paper defines.
+    const paper = tokens.length === 1 && paperDefinition(tokens[0].exact);
+    if (paper) return getUi().showPaper(paper, range, { triggerText: term, context });
 
     getUi().showAdd({ term, context }, range);
   }
@@ -308,6 +382,11 @@ const JargonautContent = (() => {
     },
     setTabId(id) {
       state.tabId = id;
+    },
+    // The PDF's full text (every page, not just the rendered ones), so an
+    // abbreviation defined on page 1 is known on page 9.
+    setPaperText(text) {
+      state.paper = A.scan(text);
     },
   };
 })();

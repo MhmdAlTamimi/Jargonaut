@@ -28,6 +28,7 @@
       "js": [
         "shared/text.js",
         "shared/matcher.js",
+        "shared/abbreviations.js",
         "shared/store.js",
         "content/card.js",
         "content/content.js"
