@@ -5,11 +5,13 @@
 
 const JargonautText = (() => {
   // One "word": letters, digits and combining marks. Apostrophes inside a word
-  // ("don't") and a hyphen at a line end ("transfor-\nmer") stay inside it.
+  // ("don't") and a hyphen at a line end followed by a lowercase letter
+  // ("transfor-\nmer", a word split by hyphenation) stay inside it.
   // Everything else, including ordinary hyphens, separates words, which is
-  // what makes "self-attention" and "self attention" equal.
+  // what makes "self-attention" and "self attention" equal. A line-end
+  // hyphen before a capital ("Retrieval-\nAugmented") is a real hyphen.
   const WORD_RE =
-    /[\p{L}\p{N}\p{M}­]+(?:(?:['’]|-[^\S\n]*\n\s*)[\p{L}\p{N}\p{M}­]+)*/gu;
+    /[\p{L}\p{N}\p{M}­]+(?:(?:['’]|-[^\S\n]*\n\s*(?=\p{Ll}))[\p{L}\p{N}\p{M}­]+)*/gu;
 
   // Words that end in a period but rarely end a sentence.
   const NOT_SENTENCE_END = new Set([
@@ -67,11 +69,15 @@ const JargonautText = (() => {
     );
   }
 
-  // Collapses whitespace and rejoins words split by a hyphen at a line end.
+  // Collapses whitespace and rejoins words split by a hyphen at a line end
+  // ("transfor-\nmer" -> "transformer", "Retrieval-\nAugmented" ->
+  // "Retrieval-Augmented").
   function cleanSpace(text) {
     return (text || "")
       .replace(/­/g, "")
-      .replace(/(\p{L})-[^\S\n]*\n\s*(\p{L})/gu, "$1$2")
+      .replace(/(\p{L})-[^\S\n]*\n\s*(\p{L})/gu, (_, a, b) =>
+        /\p{Ll}/u.test(b) ? a + b : `${a}-${b}`
+      )
       .replace(/\s+/g, " ")
       .trim();
   }

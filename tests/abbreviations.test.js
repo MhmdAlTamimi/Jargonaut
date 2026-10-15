@@ -50,8 +50,9 @@ test("context is the defining sentence", () => {
 });
 
 test("works across PDF line breaks", () => {
-  const found = A.scan("we use a Graph\nNeural Net-\nwork (GNN) for this");
+  const found = A.scan("we use a Graph\nNeural Net-\nwork (GNN) and Retrieval-\nAugmented Generation (RAG)");
   assert.equal(found.get("GNN").longForm, "Graph Neural Network");
+  assert.equal(found.get("RAG").longForm, "Retrieval-Augmented Generation");
 });
 
 test("lookup accepts a plural", () => {

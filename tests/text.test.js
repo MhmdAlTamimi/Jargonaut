@@ -28,6 +28,12 @@ test("tokenize joins words split by a hyphen at a line end", () => {
   assert.deepEqual(tokens.map((t) => t.norm), ["the", "transformer", "model"]);
 });
 
+test("a line-end hyphen before a capital is a real hyphen", () => {
+  const tokens = T.tokenize("Retrieval-\nAugmented Generation");
+  assert.deepEqual(tokens.map((t) => t.norm), ["retrieval", "augmented", "generation"]);
+  assert.equal(T.cleanSpace("Retrieval-\nAugmented Generation"), "Retrieval-Augmented Generation");
+});
+
 test("isShortCaps: 3 characters or fewer, saved in all caps", () => {
   assert.equal(T.isShortCaps("SA"), true);
   assert.equal(T.isShortCaps("IT"), true);
