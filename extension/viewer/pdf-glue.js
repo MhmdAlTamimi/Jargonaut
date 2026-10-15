@@ -54,7 +54,9 @@
   async function start(app) {
     await app.initializedPromise;
     app.eventBus.on("documentloaded", () => {
-      if (app.url && !app.url.startsWith("blob:")) JargonautContent.setSourceUrl(app.url);
+      // A file opened with PDF.js's own Open button has no address to save.
+      const url = app.url && !app.url.startsWith("blob:") ? app.url : "";
+      JargonautContent.setSourceUrl(url);
       readAllText(app.pdfDocument);
     });
     if (!src) return;
