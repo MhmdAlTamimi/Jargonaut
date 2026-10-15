@@ -1,5 +1,8 @@
-// Service worker: relays the Alt+Shift+G shortcut to the page.
+// Service worker: relays the Alt+Shift+G shortcut to the page and opens
+// the glossary from the toolbar icon.
 "use strict";
+
+chrome.action.onClicked.addListener(() => chrome.runtime.openOptionsPage());
 
 // The shortcut is handled by Chrome, not the page, so it arrives here first.
 chrome.commands.onCommand.addListener(async (command, tab) => {

@@ -122,7 +122,7 @@ const JargonautStore = ((T) => {
       key: T.toKey(term),
       aliases: cleanAliases(Array.isArray(raw.aliases) ? raw.aliases : [], term),
       meanings,
-      lastUsedAt: str(raw.lastUsedAt) || nowIso(),
+      lastUsedAt: typeof raw.lastUsedAt === "string" ? raw.lastUsedAt : nowIso(),
     };
   }
 
